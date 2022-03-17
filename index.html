@@ -13,6 +13,8 @@
             $scope.timeList = JSON.parse(localStorage.getItem("timeList")) || [];
             var getTimeStamp = JSON.parse(localStorage.getItem("timeStamp"));
 
+
+
             $scope.pad = function (val) {
                 var valString = val + "";
                 if (valString.length < 2) {
@@ -38,36 +40,32 @@
                 console.log('set time')
                 $scope.seconds = $scope.pad(parseInt($scope.seconds));
                 if ($scope.seconds == 59) {
-                    $scope.seconds = 00
+                    $scope.seconds = $scope.pad(parseInt(00))
                     $scope.minutes++
                     $scope.minutes = $scope.pad(parseInt($scope.minutes));
                 }
                 if ($scope.minutes == 59) {
-                    $scope.minutes = 00
+                    $scope.minutes = $scope.pad(parseInt(00))
                     $scope.hours++
                     $scope.hours = $scope.pad(parseInt($scope.hours));
                 }
-                $scope.updateStorage();
+                $scope.updateStorage(); 
 
             }
             $scope.counter = function () {
-                //console.log('hello')
-                $scope.play = !$scope.play
-                if ($scope.play) {
-                    console.log('running')
-                    interval = $interval(function () { $scope.setTime(); }, 1000);
-                } else {
-                    console.log('stop interval')
-                    $interval.cancel(interval);
-                    $scope.updateStorage();
-                    return;
+                // //console.log('hello')
+                // $scope.play
+                let data = {
+                    type: 'counter',
+                    setdata: $scope.play
                 }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(data);
+
+
             }
 
-
-
-            if (getTimeStamp !== null) {
-                // $scope.play = true;
+            $scope.setLocalData = function (getTimeStamp) {
                 var counterSecounds = (parseInt(getTimeStamp.hours) * 60 * 60)
                     + (parseInt(getTimeStamp.minutes) * 60)
                     + parseInt(getTimeStamp.seconds);
@@ -86,16 +84,23 @@
                 $scope.minutes = $scope.pad(minutes)
                 $scope.hours = $scope.pad(hours)
                 getTimeStamp.play && $scope.counter();
+                $scope.updateStorage(); 
+            }
 
-                // $scope.seconds = $scope.pad(parseInt(time + getTimeStamp.seconds));
-                // console.log($scope.seconds);
-                // console.log('getTimeStamp.seconds', getTimeStamp.seconds)
-                // $scope.seconds = $scope.pad(parseInt(getTimeStamp.seconds)) + $scope.pad(parseInt(time));
-                // console.log('$scope.seconds', $scope.seconds)
-            } else {
-                $scope.seconds = '00';
-                $scope.minutes = '00';
-                $scope.hours = '00';
+            $scope.init = function () {
+
+                if (getTimeStamp !== null) {
+                    let data = {
+                        type: 'onInitCounter',
+                        setdata: getTimeStamp
+                    }
+                    const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                    channel.postMessage(data);
+                } else {
+                    $scope.seconds = '00';
+                    $scope.minutes = '00';
+                    $scope.hours = '00';
+                }
             }
 
             $scope.addTimeList = function () {
@@ -107,7 +112,13 @@
                 console.log('time', data)
                 $scope.timeList.push(data)
                 var timerData = JSON.stringify($scope.timeList);
-                localStorage.setItem("timeList", timerData)
+                localStorage.setItem("timeList", timerData);
+                let setData = {
+                    type: 'addList',
+                    setdata: $scope.timeList
+                }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(setData);
             }
 
             $scope.removeTimelist = function (index) {
@@ -118,8 +129,8 @@
                     type: 'removeList',
                     setdata: $scope.timeList
                 }
-                $scope.channel = new BroadcastChannel('http://127.0.0.1:5500/');
-                $scope.channel.postMessage(data);
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(data);
             }
 
             $scope.clearTimelist = function () {
@@ -128,37 +139,67 @@
                 $interval.cancel(interval);
                 localStorage.removeItem("timeList");
                 localStorage.removeItem("timeStamp");
-                $scope.seconds = '00';
-                $scope.minutes = '00';
-                $scope.hours = '00';
+                let data = {
+                    type: 'clearList',
+                    timelist: $scope.timeList,
+                    timeStamp: $scope.timeList,
+                    play: $scope.play,
+                }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(data);
             }
 
 
 
-            $scope.channel = new BroadcastChannel('http://127.0.0.1:5500/');
-            $scope.channel.addEventListener('message', (event, dd) => {
-                console.log('chhhh');
-                console.log('dd', dd)
-                $scope.minutes = '69';
-                return;
-                if (event.data.type == 'removeList') {
-                    console.log('hooray', event.data.setdata);
-                    alert('hi');
-                    localStorage.setItem("timeList", JSON.stringify(event.data.setdata))
-                    console.log('timelist',$scope.timeList)
-
-                    $scope.timeList = JSON.parse(localStorage.getItem("timeList"));
-
-                    //console.log(' $scope.timeList',  $scope.timeList)
-
+            const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+            channel.addEventListener('message', (event) => {
+                console.log('event.data.type', event.data.type)
+                if (event.data.type == 'addList') {
+                    console.log('addList', event.data.setdata);
+                    $scope.timeList = event.data.setdata;
+                    $scope.$apply();
                 }
+
+                if (event.data.type == 'removeList') {
+                    console.log('removeList', event.data.setdata);
+                    $scope.timeList = event.data.setdata;
+                    $scope.$apply();
+                }
+
+                if (event.data.type == 'counter') {
+                    $scope.play = event.data.setdata;
+                    $scope.play = !$scope.play;
+                    if ($scope.play) {
+                        console.log('running')
+                        interval = $interval(function () { $scope.setTime(); }, 1000);
+                    } else {
+                        console.log('stop interval')
+                        $interval.cancel(interval);
+                        $scope.updateStorage();
+                        !$scope.play
+                    }
+                    console.log('counter', $scope.play)
+                    $scope.$apply();
+                }
+
+                if (event.data.type == 'onInitCounter') {
+                    $scope.setLocalData(event.data.setdata);
+                    $scope.$apply();
+                }
+
+
+                if (event.data.type == 'clearList') {
+                    //console.log('clearList', event.data.setdata);
+                    $scope.timeList = event.data.timeList;
+                    $scope.timeList = event.data.timeStamp;
+                    $scope.play = event.data.play;
+                    $scope.seconds = '00';
+                    $interval.cancel(interval);
+                    $scope.minutes = '00';
+                    $scope.hours = '00';
+                    $scope.$apply();
+                }
+
             });
-
-            $scope.$watch('timeList', function () {
-                $scope.timeList = $scope.timeList;
-                console.log('watch', $scope.timeList);
-            }, true);
-
-
-
+            $scope.init();
         });</script></body></html>

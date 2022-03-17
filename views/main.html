@@ -42,7 +42,8 @@
 
             <div class="time-list-wrapper my-3 overflow-hidden bg-dark ">
                 <div class="d-flex border-bottom py-2 align-items-center" ng-repeat="item in timeList track by $index">
-                    <div class="col-6 fs-3 text-white" style="font-family: 'Digital-7'; font-weight: normal; font-style: normal;">
+                    <div class="col-6 fs-3 text-white"
+                        style="font-family: 'Digital-7'; font-weight: normal; font-style: normal;">
                         <label>{{item.hours}}</label>:
                         <label>{{item.minutes}}</label>:
                         <label>{{item.seconds}}</label>
@@ -67,7 +68,7 @@
             var interval;
             var now = Date.now();
             var getSeconds;
-            var setTimeList 
+            var setTimeList
             $scope.totalSeconds = 0;
             $scope.seconds = '00';
             $scope.minutes = '00';
@@ -75,6 +76,8 @@
             $scope.play = false;
             $scope.timeList = JSON.parse(localStorage.getItem("timeList")) || [];
             var getTimeStamp = JSON.parse(localStorage.getItem("timeStamp"));
+
+
 
             $scope.pad = function (val) {
                 var valString = val + "";
@@ -85,7 +88,7 @@
                 }
             }
 
-            $scope.updateStorage = function() {
+            $scope.updateStorage = function () {
                 var timeStamp = {
                     seconds: $scope.seconds,
                     minutes: $scope.minutes,
@@ -101,36 +104,32 @@
                 console.log('set time')
                 $scope.seconds = $scope.pad(parseInt($scope.seconds));
                 if ($scope.seconds == 59) {
-                    $scope.seconds = 00
+                    $scope.seconds = $scope.pad(parseInt(00))
                     $scope.minutes++
                     $scope.minutes = $scope.pad(parseInt($scope.minutes));
                 }
                 if ($scope.minutes == 59) {
-                    $scope.minutes = 00
+                    $scope.minutes = $scope.pad(parseInt(00))
                     $scope.hours++
                     $scope.hours = $scope.pad(parseInt($scope.hours));
                 }
-                $scope.updateStorage();
+                $scope.updateStorage(); 
 
             }
             $scope.counter = function () {
-                //console.log('hello')
-                $scope.play = !$scope.play
-                if ($scope.play) {
-                    console.log('running')
-                    interval = $interval(function () { $scope.setTime(); }, 1000);
-                } else {
-                    console.log('stop interval')
-                    $interval.cancel(interval);
-                    $scope.updateStorage();
-                    return;
+                // //console.log('hello')
+                // $scope.play
+                let data = {
+                    type: 'counter',
+                    setdata: $scope.play
                 }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(data);
+
+
             }
 
-
-
-            if (getTimeStamp !== null) {
-                // $scope.play = true;
+            $scope.setLocalData = function (getTimeStamp) {
                 var counterSecounds = (parseInt(getTimeStamp.hours) * 60 * 60)
                     + (parseInt(getTimeStamp.minutes) * 60)
                     + parseInt(getTimeStamp.seconds);
@@ -149,16 +148,22 @@
                 $scope.minutes = $scope.pad(minutes)
                 $scope.hours = $scope.pad(hours)
                 getTimeStamp.play && $scope.counter();
+            }
 
-                // $scope.seconds = $scope.pad(parseInt(time + getTimeStamp.seconds));
-                // console.log($scope.seconds);
-                // console.log('getTimeStamp.seconds', getTimeStamp.seconds)
-                // $scope.seconds = $scope.pad(parseInt(getTimeStamp.seconds)) + $scope.pad(parseInt(time));
-                // console.log('$scope.seconds', $scope.seconds)
-            } else {
-                $scope.seconds = '00';
-                $scope.minutes = '00';
-                $scope.hours = '00';
+            $scope.init = function () {
+
+                if (getTimeStamp !== null) {
+                    let data = {
+                        type: 'onInitCounter',
+                        setdata: getTimeStamp
+                    }
+                    const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                    channel.postMessage(data);
+                } else {
+                    $scope.seconds = '00';
+                    $scope.minutes = '00';
+                    $scope.hours = '00';
+                }
             }
 
             $scope.addTimeList = function () {
@@ -170,7 +175,13 @@
                 console.log('time', data)
                 $scope.timeList.push(data)
                 var timerData = JSON.stringify($scope.timeList);
-                localStorage.setItem("timeList", timerData)
+                localStorage.setItem("timeList", timerData);
+                let setData = {
+                    type: 'addList',
+                    setdata: $scope.timeList
+                }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(setData);
             }
 
             $scope.removeTimelist = function (index) {
@@ -184,42 +195,76 @@
                 const channel = new BroadcastChannel('http://127.0.0.1:5500/');
                 channel.postMessage(data);
             }
-            
+
             $scope.clearTimelist = function () {
                 $scope.timeList = [];
                 $scope.play = false;
                 $interval.cancel(interval);
                 localStorage.removeItem("timeList");
                 localStorage.removeItem("timeStamp");
-                $scope.seconds = '00';
-                $scope.minutes = '00';
-                $scope.hours = '00';
+                let data = {
+                    type: 'clearList',
+                    timelist: $scope.timeList,
+                    timeStamp: $scope.timeList,
+                    play: $scope.play,
+                }
+                const channel = new BroadcastChannel('http://127.0.0.1:5500/');
+                channel.postMessage(data);
             }
 
-            
+
 
             const channel = new BroadcastChannel('http://127.0.0.1:5500/');
-            channel.addEventListener ('message', (event) => {
-            
-                if(event.data.type == 'removeList') {
-                    console.log('hooray', event.data.setdata);
-                    localStorage.setItem("timeList", JSON.stringify(event.data.setdata))
-                    //console.log('timelist',JSON.parse(localStorage.getItem("timeList")))
-
-                    $scope.timeList = JSON.parse(localStorage.getItem("timeList"));
-                    
-                    //console.log(' $scope.timeList',  $scope.timeList)
-                    
+            channel.addEventListener('message', (event) => {
+                console.log('event.data.type', event.data.type)
+                if (event.data.type == 'addList') {
+                    console.log('addList', event.data.setdata);
+                    $scope.timeList = event.data.setdata;
+                    $scope.$apply();
                 }
+
+                if (event.data.type == 'removeList') {
+                    console.log('removeList', event.data.setdata);
+                    $scope.timeList = event.data.setdata;
+                    $scope.$apply();
+                }
+
+                if (event.data.type == 'counter') {
+                    $scope.play = event.data.setdata;
+                    $scope.play = !$scope.play;
+                    if ($scope.play) {
+                        console.log('running')
+                        interval = $interval(function () { $scope.setTime(); }, 1000);
+                    } else {
+                        console.log('stop interval')
+                        $interval.cancel(interval);
+                        $scope.updateStorage();
+                        !$scope.play
+                    }
+                    console.log('counter', $scope.play)
+                    $scope.$apply();
+                }
+
+                if (event.data.type == 'onInitCounter') {
+                    $scope.setLocalData(event.data.setdata);
+                    $scope.$apply();
+                }
+
+
+                if (event.data.type == 'clearList') {
+                    //console.log('clearList', event.data.setdata);
+                    $scope.timeList = event.data.timeList;
+                    $scope.timeList = event.data.timeStamp;
+                    $scope.play = event.data.play;
+                    $scope.seconds = '00';
+                    $interval.cancel(interval);
+                    $scope.minutes = '00';
+                    $scope.hours = '00';
+                    $scope.$apply();
+                }
+
             });
-
-            $scope.$watch('timeList', function () {
-                $scope.timeList = $scope.timeList;
-                console.log('watch',$scope.timeList);
-            }, true);
-
-
-
+            $scope.init();
         });
 
 
