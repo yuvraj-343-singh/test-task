@@ -1,0 +1,10 @@
+.wrapper {
+  width: 368px;
+}
+.wrapper .watchWrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000000;
+}
+
+/*# sourceMappingURL=style.css.map */

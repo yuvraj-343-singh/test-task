@@ -1,0 +1,22 @@
+{
+  "name": "test-task",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "grunt"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "grunt": "^1.4.1",
+    "grunt-contrib-jshint": "^3.2.0",
+    "grunt-contrib-sass": "^2.0.0",
+    "ruby": "^0.6.1",
+    "sass": "^1.49.9"
+  },
+  "dependencies": {
+    "grunt-contrib-htmlmin": "^3.1.0"
+  }
+}
